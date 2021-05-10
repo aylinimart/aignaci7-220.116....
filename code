@@ -1,0 +1,119 @@
+Using @220.116.230.21 server
+
+scp aignaci7@220.116.230.21:/home/aignaci7/311service.zip
+
+UPLOADING
+
+cd desktop
+
+scp 311Service2.zip aignaci7@220.116.230.21:/home/aignaci7
+
+unzip 311Service2.zip
+
+//rename file
+mv 311_Service_Requests_from_2010_to_Present.csv 311NYC2.csv
+
+//mkdir
+hdfs dfs -mkdir NYC
+
+hdfs dfs -mkdir NYC/311Requests
+
+//mv data
+hdfs dfs -put 311NYC2.csv NYC/311Requests
+
+hdfs dfs -ls NYC/311Requests
+
+hdfs dfs -chmod -R o+w .
+
+//Create Table
+CREATE TABLE nyc3
+(unique_key string,
+created_date string,
+closed_date string,
+agency string,
+agency_name string,
+complaint_type string,
+descriptor string,
+location_type string,
+incident_zip string)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+STORED AS TEXTFILE
+TBLPROPERTIES("skip.header.line.count"="1");
+
+// Load Data
+LOAD DATA INPATH '/user/aignaci7/NYC/311Requests/311NYC.csv' OVERWRITE INTO TABLE nyc3;
+
+//test table
+select * from nyc3 limit 5;
+
+//Query top 10 Agency receiving complaints, grouped by Agency in DESC order 
+CREATE TABLE IF NOT EXISTS agencycomplaints
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/agencycomplaints"
+AS
+select agency, count(agency) as total from nyc3 group by agency order by count(agency) DESC limit 10;
+
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/agencycomplaints/000*_0
+cat 000000_0 > agencycomplaints.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/agencycomplaints.csv agencycomplaints.csv
+
+//Query top 20 complaint types received, grouped by location type in DESC order
+CREATE TABLE IF NOT EXISTS complaintstoplocation
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/complaintstoplocation"
+AS
+select location_type, complaint_type, count(complaint_type) as total from nyc3 group by location_type,complaint_type order by count(complaint_type) DESC limit 20;
+
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/complaintstoplocation/000*_0
+cat 000000_0 > complaintstoplocation.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/complaintstoplocation.csv complaintstoplocation.csv
+
+//Query top 20 complaint types received, grouped by agency in DESC order
+CREATE TABLE IF NOT EXISTS complaintstopagency
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/complaintstopagency"
+AS
+select agency, complaint_type, count(complaint_type) as total from nyc3 group by agency, complaint_type order by count(complaint_type) DESC limit 20;
+
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/complaintstopagency/000*_0
+cat 000000_0 > complaintstopagency.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/complaintstopagency.csv complaintstopagency.csv
+
+//Query top 10 zip codes receiving incident reports
+CREATE TABLE IF NOT EXISTS topzip
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/topzip"
+AS
+select incident_zip, count(incident_zip) as total from nyc3 where incident_zip is not null and incident_zip != "" and incident_zip != "null"
+group by incident_zip order by count(incident_zip) DESC limit 10;
+
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/topzip/000*_0
+cat 000000_0 > topzip.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/topzip.csv topzip.csv
+
+//Query top 10 zip codes receiving incident reports, includes un-reported zip codes
+CREATE TABLE IF NOT EXISTS topzipemp
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/topzipemp"
+AS
+select incident_zip, count(incident_zip) as total from nyc3 group by incident_zip order by count(incident_zip) DESC limit 10;
+
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/topzipemp/000*_0
+cat 000000_0 > topzipemp.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/topzipemp.csv topzipemp.csv
