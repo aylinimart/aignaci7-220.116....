@@ -117,3 +117,17 @@ select incident_zip, count(incident_zip) as total from nyc3 group by incident_zi
 hdfs dfs -get /user/aignaci7/NYC/topzipemp/000*_0
 cat 000000_0 > topzipemp.csv
 scp aignaci7@220.116.230.21:/home/aignaci7/topzipemp.csv topzipemp.csv
+
+//Query for created_date and zip to be used for timemap
+CREATE TABLE IF NOT EXISTS timezip
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ","
+STORED AS TEXTFILE
+LOCATION "/user/aignaci7/NYC/timezip"
+AS
+select created_date, incident_zip from nyc3 where incident_zip is not null and incident_zip != "" and incident_zip != "null" and created_date like '%2010%' 
+group by incident_zip, created_date limit 5000;
+//download file as csv
+hdfs dfs -get /user/aignaci7/NYC/timezip/000*_0
+cat 000000_0 > timezip.csv
+scp aignaci7@220.116.230.21:/home/aignaci7/timezip.csv timezip.csv
